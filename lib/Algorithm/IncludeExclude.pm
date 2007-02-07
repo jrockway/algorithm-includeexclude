@@ -5,7 +5,7 @@ use strict;
 
 =head1 NAME
 
-Algorithm::IncludeExclude - The great new Algorithm::IncludeExclude!
+Algorithm::IncludeExclude - build and evaluate include/exclude lists
 
 =head1 VERSION
 
@@ -17,34 +17,93 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+   my $ie = Algorithm::IncludeExclude->new;
+   
+   # setup rules
+   $ie->include();                      # default to include
+   $ie->exclude('foo');
+   $ie->exclude('bar');
+   $ie->include('foo','baz');
 
-Perhaps a little code snippet.
+   # evaluate candidates
+   $ie->evaluate(qw/foo bar/);          # exclude
+   $ie->evaluate(qw/quux foo bar/);     # include
+   $ie->evaluate(qw/foo baz quux/);     # include
+   $ie->evaluate(qw/bar baz/);          # exclude
 
-    use Algorithm::IncludeExclude;
+=head1 Methods
 
-    my $foo = Algorithm::IncludeExclude->new();
-    ...
-
-=head1 EXPORT
-
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
-
-=head1 FUNCTIONS
-
-=head2 function1
+=head2 new
 
 =cut
 
-sub function1 {
+# self is a tree, that looks like:
+# {path1 => [ value1, {path2 => [ value2, ... ]}]}
+# path1 has value value1
+# path1->path2 has value value2
+# path3 is undefined
+# etc
+
+sub new {
+    my $self = [undef, {}];
+    my $class = shift;
+    return bless $self => $class;
 }
 
-=head2 function2
+# walks down the tree and sets the value of path to value
+sub _set {
+    my $tree  = shift;
+    my $path  = shift;
+    my $value = shift;
+
+    foreach my $head (@$path){
+	my $node = $tree->[1]->{$head};
+	if('ARRAY' ne ref $node){
+	    $node = $tree->[1]->{$head} = [undef, {}];
+	}
+	$tree = $node;
+    }
+    $tree->[0] = $value;
+}
+
+=head2 include
 
 =cut
 
-sub function2 {
+sub include {
+    my $self = shift;
+    my @path = @_;
+    $self->_set(\@path, 1);
+}
+
+=head2 exclude
+
+=cut
+
+sub exclude {
+    my $self = shift;
+    my @path = @_;
+    $self->_set(\@path, 0);
+}
+
+=head2 evaluate
+
+=cut
+
+sub evaluate {
+    my $self = shift;
+    my @path = @_;
+    my @self = @$self;
+    my $tree = \@self;
+    my $value = $tree->[0];
+    
+    foreach my $head (@path){
+	last if ref $tree ne 'ARRAY';
+	$value = $tree->[0];
+	$tree = $tree->[1]->{$head};
+    }
+
+    return $value;
 }
 
 =head1 AUTHOR
