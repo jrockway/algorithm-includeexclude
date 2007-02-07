@@ -93,14 +93,13 @@ sub exclude {
 sub evaluate {
     my $self = shift;
     my @path = @_;
-    my @self = @$self;
-    my $tree = \@self;
-    my $value = $tree->[0];
+    my $value = $self->[0];
+    my $tree  = [@{$self}]; # unbless
     
     foreach my $head (@path){
-	last if ref $tree ne 'ARRAY';
-	$value = $tree->[0];
 	$tree = $tree->[1]->{$head};
+	last unless ref $tree;
+	$value = $tree->[0];
     }
 
     return $value;
