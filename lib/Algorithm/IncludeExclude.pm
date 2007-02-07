@@ -2,6 +2,7 @@ package Algorithm::IncludeExclude;
 
 use warnings;
 use strict;
+use Tie::RefHash;
 
 =head1 NAME
 
@@ -45,8 +46,11 @@ our $VERSION = '0.01';
 # etc
 
 sub new {
-    my $self = [undef, {}];
     my $class = shift;
+    tie my %data, 'Tie::RefHash::Nestable';
+    my $args = shift || {};
+    $args->{join} ||= ''; # avoid warnings
+    my $self = [undef, \%data, $args];
     return bless $self => $class;
 }
 
@@ -56,7 +60,15 @@ sub _set {
     my $path  = shift;
     my $value = shift;
 
+    my $ref = 0;
     foreach my $head (@$path){
+	# ignore everything after a qr// rule
+	if($ref){
+	    warn "Ignoring values after a qr// rule";
+	    last;
+	}
+	$ref = 1 if ref $head; # adding a regexp
+	
 	my $node = $tree->[1]->{$head};
 	if('ARRAY' ne ref $node){
 	    $node = $tree->[1]->{$head} = [undef, {}];
