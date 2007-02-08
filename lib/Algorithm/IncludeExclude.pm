@@ -18,23 +18,115 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
+Algorithm::IncludeExclude lets you define a tree of include / exclude
+rules and then allows you to determine the best rule for a given path.
+
+For example, to include everything, then exclude everything under
+C<bar> or C<baz> but then include everything under C<foo baz>, you
+could write:
+
    my $ie = Algorithm::IncludeExclude->new;
    
    # setup rules
    $ie->include();                      # default to include
    $ie->exclude('foo');
    $ie->exclude('bar');
-   $ie->include('foo','baz');
+   $ie->include(qw/foo baz/);
 
    # evaluate candidates
-   $ie->evaluate(qw/foo bar/);          # exclude
-   $ie->evaluate(qw/quux foo bar/);     # include
-   $ie->evaluate(qw/foo baz quux/);     # include
-   $ie->evaluate(qw/bar baz/);          # exclude
+   $ie->evaluate(qw/foo bar/);          # exclude (due to 'foo' rule)
+   $ie->evaluate(qw/bar baz/);          # exclude (due to 'bar' rule)
+   $ie->evaluate(qw/quux foo bar/);     # include (due to '' rule)
+   $ie->evaluate(qw/foo baz quux/);     # include (due to 'foo/baz' rule)
 
-=head1 Methods
+You can also match against regexes.  Let's imagine you want to exclude
+everything in the C<admin> directory, as well as all files that end
+with a C<.protected> extension.
+
+Here's how to implement that:
+
+   my $ie = Algorithm::IncludeExclude->new;
+   $ie->exclude('admin');
+   $ie->exclude(qr/[.]protected$/);
+
+   $ie->evaluate(qw/admin let me in/);  # exclude (due to 'admin' rule)
+   $ie->evaluate(qw/a path.protected/); # exclude (due to regex)
+   $ie->evaluate(qw/foo bar/);          # undefined (no rule matches)
+
+   $ie->include(qw/foo bar/);
+   $ie->evaluate(qw/foo bar/);          # now it's included
+
+If you wanted to include files inside the C<admin> path ending in C<.ok>,
+you could just add this rule:
+
+   $ie->include('admin', qr/[.]ok$/);
+   $ie->evaluate(qw/admin super public records.ok/); # included
+
+The most specific match always wins -- if there's not an exact match,
+the nearest match is chosen instead.
+
+=head1 NOTES
+
+=over 4
+
+=item *
+
+Regexes can only appear as the last element in a rule:
+
+   $ie->include(qr/foo/, qr/bar/);
+   $ie->exclude(qr/foo/, qr/bar/);
+
+If regexes were allowed anywhere, things could get very confusing,
+very quickly.
+
+=item *
+
+Regexes are matched against any remaining path elements when they are
+first encountered.  In the following example:
+
+   $ie->include('foo', qr/bar/);
+   $ie->evaluate('foo', 'baz', 'quux', 'bar'); # include
+
+The match works like this.  First, 'foo' (from the include rule) and
+'foo' (from the path being evaluated) are compared.  Since there's a
+match, the next element in the path is examined against C<foo>'s
+subtree.  The only remaining item in the rule tree is a regex, so the
+regex is compared to the rest of the path being evaluated, joined by
+the C<join> argument to new (see L</METHODS/new>); namely:
+
+   baz/quux/bar
+
+Since the regular expression matches this string, the include rule is
+matched.
+
+=item *
+
+Regex rules are checked before non-regex rules.  For example:
+
+  $ie->exclude('foo', 'bar');
+  $ie->include(qr/bar/);
+
+  $ie->evaluate('foo', 'bar'); # include, due to regex
+
+=back
+
+=cut
+
+=head1 METHODS
 
 =head2 new
+
+Create a new instance.  Accepts an optional hashref of arguments.  The
+arguments may be:
+
+=over 4
+
+=item join 
+
+Character to join list with when matching against a regex.  Defaults
+to C</>, which is good for matching against URLs or filesystem items.
+
+=back
 
 =cut
 
@@ -84,6 +176,7 @@ sub _set {
 }
 
 =head2 include
+
 
 =cut
 

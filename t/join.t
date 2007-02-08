@@ -11,4 +11,3 @@ $ie->exclude(qr/foo\|XXX\|bar$/);
 
 is $ie->evaluate('foo'), 1;
 is $ie->evaluate('foo', 'bar'), 0;
-
