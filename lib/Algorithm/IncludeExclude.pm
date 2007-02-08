@@ -108,6 +108,16 @@ Regex rules are checked before non-regex rules.  For example:
 
   $ie->evaluate('foo', 'bar'); # include, due to regex
 
+=item *
+
+If two or more regular expressions at the same level match a path, the
+result is undefined:
+
+  $ie->include(qr/foo/);
+  $ie->exclude(qr/bar/);
+ 
+  $ie->evaluate('foobar'); # undef is returned
+
 =back
 
 =cut
@@ -123,8 +133,9 @@ arguments may be:
 
 =item join 
 
-Character to join list with when matching against a regex.  Defaults
-to C</>, which is good for matching against URLs or filesystem items.
+String to join remaining path elements with when matching against a
+regex.  Defaults to C</>, which is good for matching against URLs or
+filesystem paths.
 
 =back
 
@@ -175,8 +186,9 @@ sub _set {
     $tree->[0] = $value;
 }
 
-=head2 include
+=head2 include(@path)
 
+Add an include path to the rule tree.  C<@path> may end with a regex.
 
 =cut
 
@@ -186,7 +198,9 @@ sub include {
     $self->_set(\@path, 1);
 }
 
-=head2 exclude
+=head2 exclude(@path)
+
+Add an exclude path to the rule tree.  C<@path> may end with a regex.
 
 =cut
 
@@ -196,7 +210,11 @@ sub exclude {
     $self->_set(\@path, 0);
 }
 
-=head2 evaluate
+=head2 evaluate(@path)
+
+Evaluate whether C<@path> should be included (true) or excluded
+(false).  If the include/exclude status cannot be determined (no rules
+match, more than one regex matches), C<undef> is returned.
 
 =cut
 
