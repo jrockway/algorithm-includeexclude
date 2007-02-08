@@ -68,7 +68,11 @@ sub _set {
 	croak "Ignoring values after a qr// rule" if $ref;
 	if(ref $head){
 	    $ref = 1;
-	    $regexes->{$head} = $head;
+	    $regexes->{"X$head"} = $head;
+	    $head = "X$head";
+	}
+	else {
+	    $head = "0$head";
 	}
 	my $node = $tree->[1]->{$head};
 	$node = $tree->[1]->{$head} = [undef, {}]
@@ -117,14 +121,16 @@ sub evaluate {
 	# get regexes at this level;
 	my @regexes = 
 	  grep { defined }
-	    map { $REGEXES{$_} } keys %{$tree->[1]};
+	    map { $REGEXES{$_} } 
+	      grep { /^X/ }
+		keys %{$tree->[1]};
 	
 	if(@regexes){
 	    my $matches = 0;
 	    my $rest = join $JOIN, ($head,@path);
 	    foreach my $regex (@regexes){
 		if($rest =~ /$regex/){
-		    $value = $tree->[1]->{$regex}->[0];
+		    $value = $tree->[1]->{"X$regex"}->[0];
 		    $matches++;
 		}
 	    }
@@ -132,7 +138,7 @@ sub evaluate {
 	    return $value if $matches == 1;
 	}
 
-	$tree = $tree->[1]->{$head};
+	$tree = $tree->[1]->{"0$head"};
 	last unless ref $tree;
 	$value = $tree->[0];
     }
