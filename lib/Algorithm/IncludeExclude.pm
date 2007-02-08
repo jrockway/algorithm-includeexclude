@@ -49,6 +49,7 @@ sub new {
     my $class = shift;
     my $args = shift || {};
     $args->{join} ||= ''; # avoid warnings
+    $args->{regexes} = {};
     my $self = [undef, {}, $args];
     return bless $self => $class;
 }
@@ -58,16 +59,21 @@ sub _set {
     my $tree  = shift;
     my $path  = shift;
     my $value = shift;
+    
+    my %regexes = %{$tree->[2]->{regexes}};
 
     my $ref = 0;
     foreach my $head (@$path){
 	# ignore everything after a qr// rule
 	croak "Ignoring values after a qr// rule" if $ref;
-	$ref = 1 if ref $head; # adding a regexp
-	my $node = $tree->[1]->{$head};
-	if('ARRAY' ne ref $node){
-	    $node = $tree->[1]->{$head} = [undef, {}];
+	if(ref $head){
+	    $ref = 1;
+	    $regexes{$head} = $head;
 	}
+	my $node = $tree->[1]->{$head};
+	$node = $tree->[1]->{$head} = [undef, {}]
+	  if('ARRAY' ne ref $node);
+	
 	$tree = $node;
     }
     $tree->[0] = $value;
