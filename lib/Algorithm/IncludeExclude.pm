@@ -60,7 +60,7 @@ sub _set {
     my $path  = shift;
     my $value = shift;
     
-    my %regexes = %{$tree->[2]->{regexes}};
+    my $regexes = $tree->[2]->{regexes};
 
     my $ref = 0;
     foreach my $head (@$path){
@@ -68,7 +68,7 @@ sub _set {
 	croak "Ignoring values after a qr// rule" if $ref;
 	if(ref $head){
 	    $ref = 1;
-	    $regexes{$head} = $head;
+	    $regexes->{$head} = $head;
 	}
 	my $node = $tree->[1]->{$head};
 	$node = $tree->[1]->{$head} = [undef, {}]
@@ -108,8 +108,30 @@ sub evaluate {
     my @path = @_;
     my $value = $self->[0];
     my $tree  = [@{$self}]; # unbless
+
+    # "constants" (in here anyway)
+    my %REGEXES = %{$self->[2]->{regexes}};
+    my $JOIN = $self->[2]->{join};
     
-    foreach my $head (@path){
+    while(my $head = shift @path){
+	# get regexes at this level;
+	my @regexes = 
+	  grep { defined }
+	    map { $REGEXES{$_} } keys %{$tree->[1]};
+	
+	if(@regexes){
+	    my $matches = 0;
+	    my $rest = join $JOIN, ($head,@path);
+	    foreach my $regex (@regexes){
+		if($rest =~ /$regex/){
+		    $value = $tree->[1]->{$regex}->[0];
+		    $matches++;
+		}
+	    }
+	    die "Too many matches" if($matches > 1);
+	    return $value if $matches == 1;
+	}
+
 	$tree = $tree->[1]->{$head};
 	last unless ref $tree;
 	$value = $tree->[0];
