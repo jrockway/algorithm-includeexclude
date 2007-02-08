@@ -128,7 +128,7 @@ sub evaluate {
 		    $matches++;
 		}
 	    }
-	    die "Too many matches" if($matches > 1);
+	    return undef if($matches > 1);
 	    return $value if $matches == 1;
 	}
 
