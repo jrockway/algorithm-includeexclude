@@ -251,7 +251,9 @@ sub evaluate {
 
 	$tree = $tree->[1]->{"0$head"};
 	last unless ref $tree;
-	$value = $tree->[0];
+	if (defined $tree->[0]) {
+	    $value = $tree->[0];
+	}
     }
 
     return $value;
